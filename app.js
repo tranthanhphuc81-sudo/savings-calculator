@@ -612,7 +612,7 @@ function renderAlerts() {
     if (s.status === 'matured' || s.status === 'withdrawn') return;
 
     const days = getDaysUntilMaturity(s);
-    const meta = `<span class="opacity-70 text-xs font-normal"> · ${s.bank} · Gửi ${dayjs(s.startDate).format('DD/MM/YYYY')}</span>`;
+    const meta = `<span class="opacity-70 text-xs font-normal"> · ${s.bank}${s.accountNo ? ` · #${s.accountNo}` : ''} · Gửi ${dayjs(s.startDate).format('DD/MM/YYYY')}</span>`;
 
     if (days < 0) {
       alerts.push({
@@ -1591,7 +1591,7 @@ function showNotifications() {
     if (s.status === 'matured' || s.status === 'withdrawn') return;
     
     const days = getDaysUntilMaturity(s);
-    const sub = `${s.bank} · Gửi ${dayjs(s.startDate).format('DD/MM/YYYY')}`;
+    const sub = `${s.bank}${s.accountNo ? ` · #${s.accountNo}` : ''} · Gửi ${dayjs(s.startDate).format('DD/MM/YYYY')}`;
 
     if (days < 0) {
       alerts.push({
