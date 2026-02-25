@@ -632,9 +632,10 @@ function renderAlerts() {
       });
     }
 
-    // Cảnh báo ngày nhận lãi hàng tháng
-    if (s.interestType === 'monthly') {
-      const monthly = getMonthlyInterestAmount(s);
+    // Cảnh báo ngày nhận lãi hàng tháng / 3 tháng
+    if (s.interestType === 'monthly' || s.interestType === 'quarterly') {
+      const period = s.interestType === 'quarterly' ? 3 : 1;
+      const periodInterest = getMonthlyInterestAmount(s) * period;
       const nextPay = getNextInterestPaymentDate(s);
       if (nextPay) {
         const daysTo = nextPay.diff(today.startOf('day'), 'day');
@@ -642,7 +643,7 @@ function renderAlerts() {
           alerts.push({
             type: 'success',
             icon: 'fa-money-bill-wave',
-            text: `<strong>${s.name}</strong>${meta}<br/>Hôm nay nhận lãi: <strong>${formatCurrency(monthly)}</strong>`,
+            text: `<strong>${s.name}</strong>${meta}<br/>Hôm nay nhận lãi: <strong>${formatCurrency(periodInterest)}</strong>`,
             time: nextPay.format('YYYY-MM-DD'),
             id: s.id
           });
@@ -650,7 +651,7 @@ function renderAlerts() {
           alerts.push({
             type: 'info',
             icon: 'fa-calendar-check',
-            text: `<strong>${s.name}</strong>${meta}<br/>Còn <strong>${daysTo} ngày</strong> nhận lãi: ${formatCurrency(monthly)} (${nextPay.format('DD/MM/YYYY')})`,
+            text: `<strong>${s.name}</strong>${meta}<br/>Còn <strong>${daysTo} ngày</strong> nhận lãi: ${formatCurrency(periodInterest)} (${nextPay.format('DD/MM/YYYY')})`,
             time: nextPay.format('YYYY-MM-DD'),
             id: s.id
           });
@@ -814,11 +815,13 @@ function renderSavingsList() {
     const interestTypeText = {
       'maturity': 'Cuối kỳ',
       'monthly': 'Hàng tháng',
+      'quarterly': 'Định kỳ 3T',
       'upfront': 'Đầu kỳ'
     };
     const interestTypeBadge = {
       'maturity': 'bg-blue-100 text-blue-700',
       'monthly': 'bg-purple-100 text-purple-700',
+      'quarterly': 'bg-teal-100 text-teal-700',
       'upfront': 'bg-orange-100 text-orange-700'
     };
 
@@ -857,14 +860,14 @@ function renderSavingsList() {
         
         <div class="border-t pt-3 space-y-2">
           <div class="flex justify-between text-xs">
-            <span class="text-gray-500">${s.interestType === 'upfront' ? 'Lãi đã nhận (đầu kỳ)' : s.interestType === 'monthly' ? 'Lãi đã nhận / tích lũy' : 'Lãi tích lũy hiện tại'}</span>
+            <span class="text-gray-500">${s.interestType === 'upfront' ? 'Lãi đã nhận (đầu kỳ)' : (s.interestType === 'monthly' || s.interestType === 'quarterly') ? 'Lãi đã nhận / tích lũy' : 'Lãi tích lũy hiện tại'}</span>
             <span class="font-bold text-green-700">${formatCurrency(currentInterest)}</span>
           </div>
           <div class="flex justify-between text-xs">
-            <span class="text-gray-500">${s.interestType === 'monthly' ? 'Lãi nhận mỗi tháng' : 'Lãi khi đáo hạn'}</span>
-            <span class="font-bold text-blue-700">${s.interestType === 'monthly' ? formatCurrency(getMonthlyInterestAmount(s)) + '/tháng' : formatCurrency(maturityInterest)}</span>
+            <span class="text-gray-500">${s.interestType === 'monthly' ? 'Lãi nhận mỗi tháng' : s.interestType === 'quarterly' ? 'Lãi nhận 3 tháng/lần' : 'Lãi khi đáo hạn'}</span>
+            <span class="font-bold text-blue-700">${s.interestType === 'monthly' ? formatCurrency(getMonthlyInterestAmount(s)) + '/tháng' : s.interestType === 'quarterly' ? formatCurrency(getMonthlyInterestAmount(s) * 3) + '/3T' : formatCurrency(maturityInterest)}</span>
           </div>
-          ${s.interestType === 'monthly' ? `
+          ${(s.interestType === 'monthly' || s.interestType === 'quarterly') ? `
           <div class="flex justify-between text-xs">
             <span class="text-gray-500">Ngày nhận lãi tiếp theo</span>
             <span class="font-semibold text-purple-700">${getNextInterestPaymentDate(s)?.format('DD/MM/YYYY') || '—'}</span>
@@ -1508,12 +1511,12 @@ function viewSavingDetail(id) {
       
       <div class="grid grid-cols-2 gap-3">
         <div class="bg-blue-50 rounded-lg p-4">
-          <div class="text-xs text-blue-600 mb-1">${s.interestType === 'monthly' ? 'Lãi Đã Nhận / Tích Lũy' : s.interestType === 'upfront' ? 'Lãi Đã Nhận (Đầu Kỳ)' : 'Lãi Tích Lũy Hiện Tại'}</div>
+          <div class="text-xs text-blue-600 mb-1">${(s.interestType === 'monthly' || s.interestType === 'quarterly') ? 'Lãi Đã Nhận / Tích Lũy' : s.interestType === 'upfront' ? 'Lãi Đã Nhận (Đầu Kỳ)' : 'Lãi Tích Lũy Hiện Tại'}</div>
           <div class="text-lg font-bold text-blue-700">${formatCurrency(currentInterest)}</div>
         </div>
         <div class="bg-green-50 rounded-lg p-4">
-          <div class="text-xs text-green-600 mb-1">${s.interestType === 'monthly' ? 'Lãi/Tháng' : 'Lãi Khi Đáo Hạn'}</div>
-          <div class="text-lg font-bold text-green-700">${s.interestType === 'monthly' ? formatCurrency(getMonthlyInterestAmount(s)) + '/tháng' : formatCurrency(maturityInterest)}</div>
+          <div class="text-xs text-green-600 mb-1">${s.interestType === 'monthly' ? 'Lãi/Tháng' : s.interestType === 'quarterly' ? 'Lãi/3 Tháng' : 'Lãi Khi Đáo Hạn'}</div>
+          <div class="text-lg font-bold text-green-700">${s.interestType === 'monthly' ? formatCurrency(getMonthlyInterestAmount(s)) + '/tháng' : s.interestType === 'quarterly' ? formatCurrency(getMonthlyInterestAmount(s) * 3) + '/3T' : formatCurrency(maturityInterest)}</div>
         </div>
       </div>
 
@@ -1523,6 +1526,14 @@ function viewSavingDetail(id) {
         <div class="text-sm text-indigo-800">
           Ngày nhận lãi tiếp theo: <strong>${getNextInterestPaymentDate(s)?.format('DD/MM/YYYY') || '—'}</strong><br/>
           Mỗi tháng nhận: <strong>${formatCurrency(getMonthlyInterestAmount(s))}</strong>
+        </div>
+      </div>` : ''}
+      ${s.interestType === 'quarterly' ? `
+      <div class="bg-teal-50 border border-teal-200 rounded-lg p-4">
+        <div class="text-xs font-semibold text-teal-700 mb-2"><i class="fa-solid fa-calendar-check mr-1"></i>Lịch Nhận Lãi Định Kỳ 3 Tháng</div>
+        <div class="text-sm text-teal-800">
+          Ngày nhận lãi tiếp theo: <strong>${getNextInterestPaymentDate(s)?.format('DD/MM/YYYY') || '—'}</strong><br/>
+          Mỗi kỳ nhận (3 tháng): <strong>${formatCurrency(getMonthlyInterestAmount(s) * 3)}</strong>
         </div>
       </div>` : ''}
       
@@ -2169,16 +2180,21 @@ function getMonthlyInterestAmount(saving) {
   return saving.principal * saving.rate / 100 / 12;
 }
 
-// Ngày nhận lãi tiếp theo (chỉ dùng cho interestType === 'monthly')
+// Ngày nhận lãi tiếp theo (dùng cho interestType === 'monthly' hoặc 'quarterly')
 function getNextInterestPaymentDate(saving) {
-  if (saving.interestType !== 'monthly') return null;
+  if (saving.interestType !== 'monthly' && saving.interestType !== 'quarterly') return null;
+  
   const start = dayjs(saving.startDate);
   const maturity = dayjs(saving.maturityDate);
   const todayStart = dayjs().startOf('day');
-  let candidate = start.add(1, 'month');
+  
+  const period = saving.interestType === 'quarterly' ? 3 : 1;
+  let candidate = start.add(period, 'month');
+  
   while (candidate.isBefore(todayStart)) {
-    candidate = candidate.add(1, 'month');
+    candidate = candidate.add(period, 'month');
   }
+  
   return candidate.isAfter(maturity) ? maturity : candidate;
 }
 
@@ -2192,19 +2208,20 @@ function calculateCurrentInterest(saving) {
     return calculateMaturityInterest(saving);
   }
 
-  if (saving.interestType === 'monthly') {
+  if (saving.interestType === 'monthly' || saving.interestType === 'quarterly') {
     // Số tháng hoàn chỉnh đã qua => đã nhận lãi
     const ref = today.isAfter(maturity) ? maturity : today;
-    const completedMonths = Math.floor(ref.diff(start, 'month', true));
-    const monthly = getMonthlyInterestAmount(saving);
-    // Lãi đã nhận + lãi đang tích lũy trong tháng hiện tại
-    const lastPayDate = start.add(completedMonths, 'month');
-    const nextPayDate = lastPayDate.add(1, 'month').isAfter(maturity)
-      ? maturity : lastPayDate.add(1, 'month');
+    const period = saving.interestType === 'quarterly' ? 3 : 1;
+    const completedPeriods = Math.floor(ref.diff(start, 'month', true) / period);
+    const periodInterest = getMonthlyInterestAmount(saving) * period;
+    // Lãi đã nhận + lãi đang tích lũy trong kỳ hiện tại
+    const lastPayDate = start.add(completedPeriods * period, 'month');
+    const nextPayDate = lastPayDate.add(period, 'month').isAfter(maturity)
+      ? maturity : lastPayDate.add(period, 'month');
     const daysInPeriod = nextPayDate.diff(lastPayDate, 'day');
     const daysElapsedInPeriod = daysInPeriod > 0 ? Math.min(ref.diff(lastPayDate, 'day'), daysInPeriod) : 0;
-    const accruingPartial = daysInPeriod > 0 ? (monthly * daysElapsedInPeriod / daysInPeriod) : 0;
-    return completedMonths * monthly + accruingPartial;
+    const accruingPartial = daysInPeriod > 0 ? (periodInterest * daysElapsedInPeriod / daysInPeriod) : 0;
+    return completedPeriods * periodInterest + accruingPartial;
   }
 
   // maturity: phân bổ tuyến tính
