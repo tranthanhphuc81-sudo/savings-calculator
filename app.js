@@ -531,6 +531,7 @@ function renderMaturityTimeline() {
         <div class="flex-1">
           <div class="font-semibold">${s.name}</div>
           <div class="text-xs opacity-75">${s.bank} · ${formatCurrency(s.principal)}</div>
+          ${s.accountNo ? `<div class="text-xs opacity-60 mt-0.5"><i class="fa-solid fa-hashtag text-[9px]"></i> ${s.accountNo}</div>` : ''}
         </div>
         <div class="text-right">
           <div class="font-bold">${dayjs(s.maturityDate).format('DD/MM/YYYY')}</div>
@@ -827,6 +828,7 @@ function renderSavingsList() {
           <div class="flex-1 min-w-0">
             <h3 class="font-bold text-navy text-base mb-1 truncate">${s.name}</h3>
             <div class="text-xs text-gray-500">${s.bank}</div>
+            ${s.accountNo ? `<div class="text-xs text-gray-400 mt-0.5"><i class="fa-solid fa-hashtag text-[10px]"></i> ${s.accountNo}</div>` : ''}
           </div>
           <div class="flex flex-col items-end gap-1 ml-2">
             <span class="badge badge-${status}">${statusText[status]}</span>
@@ -2045,6 +2047,7 @@ function showPreviewModal(data) {
           <th class="p-2 text-left border">STT</th>
           <th class="p-2 text-left border">Tên</th>
           <th class="p-2 text-left border">Ngân Hàng</th>
+          <th class="p-2 text-left border">Số TK</th>
           <th class="p-2 text-right border">Số Tiền</th>
           <th class="p-2 text-center border">Lãi Suất</th>
           <th class="p-2 text-center border">Kỳ Hạn</th>
@@ -2058,6 +2061,7 @@ function showPreviewModal(data) {
             <td class="p-2 border">${idx + 1}</td>
             <td class="p-2 border font-medium">${s.name}</td>
             <td class="p-2 border">${s.bank}</td>
+            <td class="p-2 border text-gray-600">${s.accountNo || '—'}</td>
             <td class="p-2 border text-right font-semibold text-navy">${formatCurrency(s.principal, true)}</td>
             <td class="p-2 border text-center text-green-600 font-semibold">${s.rate}%</td>
             <td class="p-2 border text-center">${s.term}T</td>
