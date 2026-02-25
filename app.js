@@ -2013,30 +2013,24 @@ function parseDate(dateStr) {
   // Try various date formats
   const str = String(dateStr).trim();
   
-  // YYYY-MM-DD
+  // YYYY-MM-DD (ISO format - internal storage)
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
   
-  // DD/MM/YYYY
-  const match1 = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-  if (match1) {
-    const [, d, m, y] = match1;
+  // DD/MM/YYYY (Định dạng chuẩn hiển thị - ưu tiên)
+  const match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (match) {
+    const [, d, m, y] = match;
     return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }
   
-  // MM/DD/YYYY
-  const match2 = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-  if (match2) {
-    const [, m, d, y] = match2;
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-  }
-  
-  // Excel serial date
+  // Excel serial date (số nguyên hoặc số thập phân)
   if (/^\d+(\.\d+)?$/.test(str)) {
     const excelDate = parseFloat(str);
     const date = new Date((excelDate - 25569) * 86400 * 1000);
     return dayjs(date).format('YYYY-MM-DD');
   }
   
+  // Fallback: thử parse bằng dayjs
   return dayjs(str).format('YYYY-MM-DD');
 }
 
@@ -2111,7 +2105,7 @@ function downloadTemplate() {
       'Số Tiền': 50000000,
       'Lãi Suất': 5.80,
       'Kỳ Hạn': 12,
-      'Ngày Gửi': '2026-01-01',
+      'Ngày Gửi': '01/01/2026',
       'Hình Thức Lãi': 'maturity',
       'Lãi Suất Không KH': 0.20,
       'Số Tài Khoản': 'CEP001234567',
@@ -2124,7 +2118,7 @@ function downloadTemplate() {
       'Số Tiền': 30000000,
       'Lãi Suất': 5.40,
       'Kỳ Hạn': 6,
-      'Ngày Gửi': '2026-02-01',
+      'Ngày Gửi': '01/02/2026',
       'Hình Thức Lãi': 'maturity',
       'Lãi Suất Không KH': 0.20,
       'Số Tài Khoản': 'CEP001234568',
