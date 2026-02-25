@@ -173,6 +173,12 @@ function loadFromStorageWithRecovery() {
     bankRates = data.bankRates || DEFAULT_BANK_RATES;
     settings = data.settings || settings;
     
+    // Normalize dữ liệu cũ - thêm giá trị mặc định cho interestType
+    savings = savings.map(s => ({
+      ...s,
+      interestType: s.interestType || 'maturity'
+    }));
+    
     // Đảm bảo key mới có mặc định nếu load từ dữ liệu cũ
     if (settings.warnInterestDays === undefined) settings.warnInterestDays = 7;
     Object.keys(DEFAULT_BANK_RATES).forEach(bank => {
@@ -202,6 +208,12 @@ function attemptDataRecovery() {
     bankRates = data.bankRates || DEFAULT_BANK_RATES;
     settings = data.settings || settings;
     
+    // Normalize dữ liệu cũ - thêm giá trị mặc định cho interestType
+    savings = savings.map(s => ({
+      ...s,
+      interestType: s.interestType || 'maturity'
+    }));
+
     if (settings.warnInterestDays === undefined) settings.warnInterestDays = 7;
     Object.keys(DEFAULT_BANK_RATES).forEach(bank => {
       if (!bankRates[bank]) bankRates[bank] = { ...DEFAULT_BANK_RATES[bank] };
@@ -340,6 +352,12 @@ function restoreFromBackup(backupIndex) {
     savings = data.savings || [];
     bankRates = data.bankRates || DEFAULT_BANK_RATES;
     settings = data.settings || settings;
+    
+    // Normalize dữ liệu cũ - thêm giá trị mặc định cho interestType
+    savings = savings.map(s => ({
+      ...s,
+      interestType: s.interestType || 'maturity'
+    }));
     
     saveToStorage();
     renderAll();
@@ -1419,7 +1437,7 @@ function saveSavingsForm() {
   const principal = parseMoney(document.getElementById('form-principal').value);
   const rate = parseFloat(document.getElementById('form-rate').value);
   const term = parseInt(document.getElementById('form-term').value);
-  const interestType = document.getElementById('form-interest-type').value;
+  const interestType = document.getElementById('form-interest-type').value || 'maturity';
   const startDate = document.getElementById('form-start-date').value;
   const demandRate = parseFloat(document.getElementById('form-demand-rate').value) || 0.5;
   const accountNo = document.getElementById('form-account-no').value.trim();
@@ -1480,6 +1498,7 @@ function viewSavingDetail(id) {
   const interestTypeText = {
     'maturity': 'Cuối kỳ (Đáo hạn)',
     'monthly': 'Hàng tháng',
+    'quarterly': 'Định kỳ 3 tháng',
     'upfront': 'Đầu kỳ'
   };
   
@@ -1498,7 +1517,7 @@ function viewSavingDetail(id) {
         <tr><td>Số tiền gốc:</td><td class="text-navy">${formatCurrency(s.principal)}</td></tr>
         <tr><td>Lãi suất:</td><td class="text-green-600">${s.rate}%/năm</td></tr>
         <tr><td>Kỳ hạn:</td><td>${s.term} tháng</td></tr>
-        <tr><td>Hình thức lãi:</td><td>${interestTypeText[s.interestType]}</td></tr>
+        <tr><td>Hình thức lãi:</td><td>${interestTypeText[s.interestType || 'maturity'] || 'Cuối kỳ (Đáo hạn)'}</td></tr>
         <tr><td>Ngày gửi:</td><td>${dayjs(s.startDate).format('DD/MM/YYYY')}</td></tr>
         <tr><td>Ngày đáo hạn:</td><td>${dayjs(s.maturityDate).format('DD/MM/YYYY')}</td></tr>
         <tr><td>Trạng thái:</td><td><span class="badge badge-${status}">${statusText[status]}</span></td></tr>
@@ -1575,7 +1594,7 @@ function editSaving(id) {
   document.getElementById('form-principal').value = formatMoneyValue(s.principal);
   document.getElementById('form-rate').value = s.rate;
   document.getElementById('form-term').value = s.term;
-  document.getElementById('form-interest-type').value = s.interestType;
+  document.getElementById('form-interest-type').value = s.interestType || 'maturity';
   document.getElementById('form-start-date').value = s.startDate;
   document.getElementById('form-demand-rate').value = s.demandRate;
   document.getElementById('form-account-no').value = s.accountNo || '';
@@ -1744,6 +1763,12 @@ function handleImport(event) {
       if (data.savings) savings = data.savings;
       if (data.bankRates) bankRates = data.bankRates;
       if (data.settings) settings = data.settings;
+      
+      // Normalize dữ liệu cũ - thêm giá trị mặc định cho interestType
+      savings = savings.map(s => ({
+        ...s,
+        interestType: s.interestType || 'maturity'
+      }));
       
       saveToStorage();
       renderAll();
