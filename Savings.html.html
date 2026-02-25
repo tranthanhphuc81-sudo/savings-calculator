@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CEP SavingsTrack – Theo Dõi Tiết Kiệm CEP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="bg-gray-50 font-sans">
+
+<!-- SIDEBAR -->
+<div id="sidebar" class="sidebar fixed left-0 top-0 h-full w-64 bg-navy text-white flex flex-col z-40 transition-transform">
+  <div class="flex items-center gap-3 px-6 py-5 border-b border-blue-800">
+    <div class="w-10 h-10 bg-gold rounded-full flex items-center justify-center">
+      <i class="fa-solid fa-piggy-bank text-navy text-lg"></i>
+    </div>
+    <div>
+      <div class="font-bold text-lg leading-tight">CEP SavingsTrack</div>
+      <div class="text-blue-300 text-xs">Theo Dõi Tiết Kiệm CEP</div>
+    </div>
+  </div>
+  <nav class="flex-1 py-4 overflow-y-auto">
+    <a href="#" class="nav-link active" data-page="dashboard">
+      <i class="fa-solid fa-gauge-high w-5"></i> Tổng Quan
+    </a>
+    <a href="#" class="nav-link" data-page="savings">
+      <i class="fa-solid fa-book-open w-5"></i> Sổ Tiết Kiệm
+    </a>
+    <a href="#" class="nav-link" data-page="calculator">
+      <i class="fa-solid fa-calculator w-5"></i> Máy Tính Lãi Suất
+    </a>
+    <a href="#" class="nav-link" data-page="advisor">
+      <i class="fa-solid fa-lightbulb w-5"></i> Tư Vấn Sản Phẩm
+    </a>
+    <a href="#" class="nav-link" data-page="rates">
+      <i class="fa-solid fa-percent w-5"></i> Lãi Suất Ngân Hàng
+    </a>
+    <a href="#" class="nav-link" data-page="settings">
+      <i class="fa-solid fa-gear w-5"></i> Cài Đặt
+    </a>
+  </nav>
+  <div class="px-6 py-4 border-t border-blue-800 text-xs text-blue-400">
+    Dữ liệu lưu cục bộ · Riêng tư 100%
+  </div>
+</div>
+
+<!-- SIDEBAR OVERLAY -->
+<div id="sidebar-overlay" class="hidden fixed inset-0 bg-black bg-opacity-40 z-30 md:hidden" onclick="toggleSidebar()"></div>
+
+<!-- MAIN CONTENT -->
+<div id="main-content" class="md:ml-64 min-h-screen">
+  <!-- TOPBAR -->
+  <header class="bg-white shadow-sm px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between sticky top-0 z-30">
+    <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+      <button id="hamburger-btn" class="md:hidden shrink-0 p-2 text-gray-500 hover:text-navy" onclick="toggleSidebar()">
+        <i class="fa-solid fa-bars text-xl"></i>
+      </button>
+      <div class="min-w-0">
+        <h1 id="page-title" class="text-base sm:text-xl font-bold text-navy truncate">Tổng Quan</h1>
+        <p id="page-subtitle" class="text-xs sm:text-sm text-gray-500">Ngày hôm nay: <span id="today-date"></span></p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <button id="notif-btn" class="relative p-2 text-gray-500 hover:text-navy" onclick="showNotifications()">
+        <i class="fa-solid fa-bell text-xl"></i>
+        <span id="notif-badge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"></span>
+      </button>
+      <button class="btn-gold px-3 sm:px-4 py-2 text-sm font-semibold rounded-lg" onclick="openAddSavings()">
+        <i class="fa-solid fa-plus"></i><span class="hidden sm:inline ml-1">Thêm Sổ TK</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- PAGES -->
+  <main class="p-3 sm:p-6">
+    <!-- PAGE: DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <!-- Alert Banner -->
+      <div id="alert-banner" class="hidden mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+        <i class="fa-solid fa-triangle-exclamation text-red-500 mt-0.5 text-lg"></i>
+        <div id="alert-content" class="text-sm text-red-700"></div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="stat-card bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm text-gray-500">Tổng Vốn Gửi</span>
+            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <i class="fa-solid fa-vault text-navy"></i>
+            </div>
+          </div>
+          <div id="stat-total-principal" class="text-2xl font-bold text-navy">0 ₫</div>
+          <div class="text-xs text-gray-400 mt-1" id="stat-total-books">0 sổ tiết kiệm</div>
+        </div>
+        <div class="stat-card bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm text-gray-500">Lãi Tích Lũy (Ước Tính)</span>
+            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <i class="fa-solid fa-arrow-trend-up text-green-600"></i>
+            </div>
+          </div>
+          <div id="stat-total-interest" class="text-2xl font-bold text-green-600">0 ₫</div>
+          <div class="text-xs text-gray-400 mt-1">Tính đến hôm nay</div>
+        </div>
+        <div class="stat-card bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm text-gray-500">Sắp Đến Hạn</span>
+            <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <i class="fa-solid fa-clock text-yellow-600"></i>
+            </div>
+          </div>
+          <div id="stat-due-soon" class="text-2xl font-bold text-yellow-600">0</div>
+          <div class="text-xs text-gray-400 mt-1">Trong 30 ngày tới</div>
+        </div>
+        <div class="stat-card bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm text-gray-500">Tổng Nhận Khi ĐH</span>
+            <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <i class="fa-solid fa-sack-dollar text-purple-600"></i>
+            </div>
+          </div>
+          <div id="stat-total-payout" class="text-2xl font-bold text-purple-600">0 ₫</div>
+          <div class="text-xs text-gray-400 mt-1">Vốn + Lãi đáo hạn</div>
+        </div>
+      </div>
+
+      <!-- Timeline + Chart -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <div class="lg:col-span-2 bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <h2 class="font-semibold text-navy mb-4">Lịch Đáo Hạn</h2>
+          <div id="maturity-timeline" class="space-y-2">
+            <div class="text-gray-400 text-sm text-center py-8">Chưa có sổ tiết kiệm nào</div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <h2 class="font-semibold text-navy mb-4">Phân Bổ Vốn</h2>
+          <div style="position:relative; height:220px;">
+            <canvas id="portfolio-chart"></canvas>
+          </div>
+          <div id="portfolio-legend" class="mt-3 space-y-1"></div>
+        </div>
+      </div>
+
+      <!-- Recent + Alerts -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <h2 class="font-semibold text-navy mb-4">Cảnh Báo & Nhắc Nhở</h2>
+          <div id="alerts-list" class="space-y-2">
+            <div class="text-gray-400 text-sm text-center py-6">Không có cảnh báo nào</div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+          <h2 class="font-semibold text-navy mb-4">Sổ Tiết Kiệm Gần Đây</h2>
+          <div id="recent-savings" class="space-y-2">
+            <div class="text-gray-400 text-sm text-center py-6">Chưa có sổ tiết kiệm nào</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: SAVINGS BOOKS -->
+    <div id="page-savings" class="page hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+        <div class="flex flex-wrap gap-2">
+          <input id="search-savings" type="text" placeholder="Tìm kiếm..." class="input-field flex-1 min-w-[130px]" oninput="renderSavingsList()"/>
+          <select id="filter-status" class="input-field flex-1 min-w-[130px]" onchange="renderSavingsList()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="active">Đang gửi</option>
+            <option value="due-soon">Sắp đến hạn</option>
+            <option value="overdue">Quá hạn</option>
+            <option value="matured">Đã đáo hạn</option>
+          </select>
+          <select id="filter-bank" class="input-field flex-1 min-w-[130px]" onchange="renderSavingsList()">
+            <option value="">Tất cả ngân hàng</option>
+          </select>
+        </div>
+        <button class="shrink-0 btn-gold px-4 py-2 text-sm font-semibold rounded-lg" onclick="openAddSavings()">
+          <i class="fa-solid fa-plus mr-1"></i> Thêm Sổ TK
+        </button>
+      </div>
+      <div id="savings-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+    </div>
+
+    <!-- PAGE: CALCULATOR -->
+    <div id="page-calculator" class="page hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Input panel -->
+        <div class="space-y-4">
+          <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <h2 class="font-semibold text-navy mb-4 flex items-center gap-2">
+              <i class="fa-solid fa-calculator text-gold"></i> Thông Số Tính Toán
+            </h2>
+            <div class="space-y-4">
+              <div>
+                <label class="label">Số tiền gốc (₫)</label>
+                <input id="calc-principal" type="text" inputmode="numeric" class="input-field w-full" placeholder="50.000.000" value="50.000.000" oninput="formatMoneyInput(this); runCalculatorDebounced()"/>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="label">Lãi suất (%/năm)</label>
+                  <input id="calc-rate" type="number" class="input-field w-full" placeholder="5.80" value="5.80" step="0.1" oninput="runCalculatorDebounced()"/>
+                  <p class="text-xs text-gray-500 mt-1">Nhập lãi suất hoặc chọn từ ngân hàng để tự động điền</p>
+                </div>
+                <div>
+                  <label class="label">Kỳ hạn</label>
+                  <select id="calc-term" class="input-field w-full" onchange="runCalculator()">
+                    <option value="1">1 tháng</option>
+                    <option value="2">2 tháng</option>
+                    <option value="3">3 tháng</option>
+                    <option value="6">6 tháng</option>
+                    <option value="9">9 tháng</option>
+                    <option value="12" selected>12 tháng</option>
+                    <option value="18">18 tháng</option>
+                    <option value="24">24 tháng</option>
+                    <option value="36">36 tháng</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="label">Hình thức lãi</label>
+                  <select id="calc-interest-type" class="input-field w-full" onchange="runCalculator()">
+                    <option value="maturity" selected>Cuối kỳ (Đáo hạn)</option>
+                    <option value="monthly">Hàng tháng</option>
+                    <option value="upfront">Đầu kỳ</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="label">Ngày gửi</label>
+                  <input id="calc-start-date" type="date" class="input-field w-full" oninput="runCalculatorDebounced()"/>
+                </div>
+              </div>
+              <div class="border-t pt-4">
+                <h3 class="font-medium text-sm text-gray-600 mb-3">Mô phỏng Rút Trước Hạn</h3>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="label">Lãi suất không kỳ hạn (%/năm)</label>
+                    <input id="calc-demand-rate" type="number" class="input-field w-full" placeholder="0.1" value="0.5" step="0.01" oninput="runCalculatorDebounced()"/>
+                  </div>
+                  <div>
+                    <label class="label">Ngày rút dự kiến</label>
+                    <input id="calc-early-date" type="date" class="input-field w-full" oninput="runCalculatorDebounced()"/>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rate comparison table -->
+          <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <h2 class="font-semibold text-navy mb-4 flex items-center gap-2">
+              <i class="fa-solid fa-table text-gold"></i> So Sánh Kỳ Hạn
+            </h2>
+            <div id="term-comparison-table" class="overflow-x-auto"></div>
+          </div>
+        </div>
+
+        <!-- Result panel -->
+        <div class="space-y-4">
+          <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <h2 class="font-semibold text-navy mb-4 flex items-center gap-2">
+              <i class="fa-solid fa-chart-pie text-gold"></i> Kết Quả Tính Toán
+            </h2>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <div class="result-box bg-navy text-white rounded-xl p-4">
+                <div class="text-xs text-blue-300 mb-1">Tiền Lãi Đến Hạn</div>
+                <div id="res-interest" class="text-xl font-bold">0 ₫</div>
+              </div>
+              <div class="result-box bg-green-50 rounded-xl p-4">
+                <div class="text-xs text-green-600 mb-1">Tổng Nhận Về</div>
+                <div id="res-total" class="text-xl font-bold text-green-700">0 ₫</div>
+              </div>
+              <div class="result-box bg-blue-50 rounded-xl p-4">
+                <div class="text-xs text-blue-600 mb-1">Ngày Đáo Hạn</div>
+                <div id="res-maturity" class="text-base font-bold text-blue-700">—</div>
+              </div>
+              <div class="result-box bg-purple-50 rounded-xl p-4">
+                <div class="text-xs text-purple-600 mb-1">Hiệu Suất / Năm</div>
+                <div id="res-yield" class="text-xl font-bold text-purple-700">0%</div>
+              </div>
+            </div>
+
+            <!-- Early withdrawal -->
+            <div id="early-withdrawal-result" class="hidden border border-orange-200 bg-orange-50 rounded-xl p-4">
+              <div class="font-semibold text-orange-700 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation"></i> Mô Phỏng Rút Trước Hạn
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <div>Số ngày đã gửi: <span id="res-days-elapsed" class="font-bold">0</span></div>
+                <div>Lãi thực nhận: <span id="res-early-interest" class="font-bold text-orange-700">0 ₫</span></div>
+                <div>Thiệt hại so với ĐH: <span id="res-loss" class="font-bold text-red-600">0 ₫</span></div>
+                <div>Tỷ lệ thiệt hại: <span id="res-loss-pct" class="font-bold text-red-600">0%</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart -->
+          <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <h2 class="font-semibold text-navy mb-4">Biểu Đồ Tăng Trưởng</h2>
+            <div style="position:relative; height:220px;">
+              <canvas id="calc-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- Add to tracker button -->
+          <button onclick="addFromCalculator()" class="w-full btn-navy py-3 rounded-xl font-semibold text-white flex items-center justify-center gap-2">
+            <i class="fa-solid fa-plus-circle"></i> Thêm Vào Danh Sách Theo Dõi
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: ADVISOR -->
+    <div id="page-advisor" class="page hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Criteria input -->
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <h2 class="font-semibold text-navy mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-gold"></i> Tiêu Chí Của Bạn
+          </h2>
+          <div class="space-y-4">
+            <div>
+              <label class="label">Số tiền muốn gửi (₫)</label>
+              <input id="adv-amount" type="text" inputmode="numeric" class="input-field w-full" placeholder="50.000.000" value="50.000.000" oninput="formatMoneyInput(this)"/>
+            </div>
+            <div>
+              <label class="label">Thời gian gửi mong muốn</label>
+              <select id="adv-term" class="input-field w-full">
+                <option value="any">Linh hoạt (bất kỳ)</option>
+                <option value="short">Ngắn hạn (1–3 tháng)</option>
+                <option value="medium">Trung hạn (6–12 tháng)</option>
+                <option value="long">Dài hạn (>12 tháng)</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">Ưu tiên</label>
+              <select id="adv-priority" class="input-field w-full">
+                <option value="rate">Lãi suất cao nhất</option>
+                <option value="flexibility">Tính linh hoạt</option>
+                <option value="bank">Ngân hàng uy tín</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">Mục tiêu tài chính</label>
+              <select id="adv-goal" class="input-field w-full">
+                <option value="savings">Tích lũy thêm</option>
+                <option value="emergency">Quỹ dự phòng</option>
+                <option value="investment">Sinh lời tối đa</option>
+                <option value="income">Thu nhập lãi hàng tháng</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">Mức chấp nhận rủi ro</label>
+              <div class="flex gap-2">
+                <button class="risk-btn active" data-risk="low" onclick="selectRisk(this,'low')">Thấp</button>
+                <button class="risk-btn" data-risk="medium" onclick="selectRisk(this,'medium')">Trung bình</button>
+                <button class="risk-btn" data-risk="high" onclick="selectRisk(this,'high')">Cao</button>
+              </div>
+            </div>
+            <button onclick="runAdvisor()" class="w-full btn-gold py-3 rounded-xl font-semibold flex items-center justify-center gap-2">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Phân Tích & Tư Vấn
+            </button>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div class="lg:col-span-2 space-y-4">
+          <div id="advisor-summary" class="hidden bg-navy text-white rounded-xl p-5">
+            <div class="flex items-start gap-3">
+              <i class="fa-solid fa-robot text-gold text-2xl mt-1"></i>
+              <div id="advisor-summary-text"></div>
+            </div>
+          </div>
+          <div id="advisor-results" class="space-y-3">
+            <div class="text-gray-400 text-sm text-center py-12 bg-white rounded-xl border border-gray-100">
+              <i class="fa-solid fa-lightbulb text-4xl text-gray-200 mb-3 block"></i>
+              Điền thông tin và nhấn "Phân Tích & Tư Vấn" để nhận gợi ý sản phẩm phù hợp
+            </div>
+          </div>
+          <div id="advisor-chart-wrap" class="hidden bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+            <h3 class="font-semibold text-navy mb-3">So Sánh Lợi Nhuận Các Sản Phẩm Đề Xuất</h3>
+            <div style="position:relative; height:200px;">
+              <canvas id="advisor-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: RATES -->
+    <div id="page-rates" class="page hidden">
+      <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <h2 class="font-semibold text-navy flex items-center gap-2">
+            <i class="fa-solid fa-percent text-gold"></i> Bảng Lãi Suất Ngân Hàng
+          </h2>
+          <div class="flex gap-2">
+            <input id="rate-search" type="text" placeholder="Tìm ngân hàng..." class="input-field flex-1 min-w-[130px] sm:w-48" oninput="renderRatesTable()"/>
+            <button onclick="openEditRates()" class="shrink-0 btn-navy px-3 sm:px-4 py-2 text-sm rounded-lg font-medium">
+              <i class="fa-solid fa-pen mr-1"></i><span class="hidden sm:inline">Cập Nhật Lãi Suất</span><span class="sm:hidden">Cập nhật</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm" id="rates-table">
+            <thead>
+              <tr class="bg-gray-50">
+                <th class="text-left p-3 rounded-tl-lg font-semibold text-gray-600">Ngân Hàng</th>
+                <th class="text-center p-3 font-semibold text-gray-600">KKH</th>
+                <th class="text-center p-3 font-semibold text-gray-600">1T</th>
+                <th class="text-center p-3 font-semibold text-gray-600">3T</th>
+                <th class="text-center p-3 font-semibold text-gray-600">6T</th>
+                <th class="text-center p-3 font-semibold text-gray-600">9T</th>
+                <th class="text-center p-3 font-semibold text-gray-600">12T</th>
+                <th class="text-center p-3 font-semibold text-gray-600">18T</th>
+                <th class="text-center p-3 font-semibold text-gray-600">24T</th>
+                <th class="text-center p-3 rounded-tr-lg font-semibold text-gray-600">36T</th>
+              <!-- KKH column added dynamically -->
+              </tr>
+            </thead>
+            <tbody id="rates-tbody"></tbody>
+          </table>
+        </div>
+        <p class="text-xs text-gray-400 mt-3">* Lãi suất mang tính tham khảo, cập nhật thủ công. Kiểm tra trực tiếp tại ngân hàng trước khi gửi.</p>
+      </div>
+
+      <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <h2 class="font-semibold text-navy mb-4">So Sánh Lãi Suất Theo Kỳ Hạn</h2>
+        <div style="position:relative; height:300px;">
+          <canvas id="rates-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: SETTINGS -->
+    <div id="page-settings" class="page hidden">
+      <div class="max-w-2xl space-y-4">
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <h2 class="font-semibold text-navy mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-bell text-gold"></i> Cài Đặt Cảnh Báo
+          </h2>
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="font-medium">Cảnh báo sắp đến hạn</div>
+                <div class="text-sm text-gray-500">Nhắc trước bao nhiêu ngày</div>
+              </div>
+              <select id="setting-warn-days" class="input-field w-32">
+                <option value="7">7 ngày</option>
+                <option value="14">14 ngày</option>
+                <option value="30" selected>30 ngày</option>
+                <option value="60">60 ngày</option>
+              </select>
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="font-medium">Cảnh báo cập nhật lãi hàng tháng</div>
+                <div class="text-sm text-gray-500">Nhắc trước bao nhiêu ngày</div>
+              </div>
+              <select id="setting-warn-interest-days" class="input-field w-32">
+                <option value="1">1 ngày</option>
+                <option value="3">3 ngày</option>
+                <option value="7" selected>7 ngày</option>
+                <option value="14">14 ngày</option>
+              </select>
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="font-medium">Cảnh báo mức thiệt hại rút trước hạn</div>
+                <div class="text-sm text-gray-500">Khi thiệt hại vượt ngưỡng</div>
+              </div>
+              <select id="setting-loss-threshold" class="input-field w-32">
+                <option value="5">5%</option>
+                <option value="10" selected>10%</option>
+                <option value="20">20%</option>
+                <option value="50">50%</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <h2 class="font-semibold text-navy mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-database text-gold"></i> Quản Lý Dữ Liệu
+          </h2>
+          <div class="space-y-3">
+            <div class="flex flex-wrap gap-3">
+              <button onclick="exportData()" class="btn-navy px-4 py-2 text-sm rounded-lg font-medium">
+                <i class="fa-solid fa-download mr-1"></i> Xuất Dữ Liệu JSON
+              </button>
+              <button onclick="importData()" class="btn-outline px-4 py-2 text-sm rounded-lg font-medium">
+                <i class="fa-solid fa-upload mr-1"></i> Nhập Dữ Liệu JSON
+              </button>
+              <button onclick="confirmClearData()" class="text-red-600 border border-red-200 px-4 py-2 text-sm rounded-lg font-medium hover:bg-red-50">
+                <i class="fa-solid fa-trash mr-1"></i> Xóa Tất Cả Dữ Liệu
+              </button>
+            </div>
+            <div class="border-t pt-3">
+              <h3 class="font-medium text-sm text-gray-700 mb-2">Import Danh Sách Sổ Tiết Kiệm</h3>
+              <div class="flex flex-wrap gap-3">
+                <button onclick="uploadSavingsList()" class="btn-gold px-4 py-2 text-sm rounded-lg font-medium">
+                  <i class="fa-solid fa-file-excel mr-1"></i> Upload File Excel/CSV
+                </button>
+                <button onclick="downloadTemplate()" class="btn-outline px-4 py-2 text-sm rounded-lg font-medium">
+                  <i class="fa-solid fa-file-download mr-1"></i> Tải File Mẫu
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-2">Hỗ trợ: Excel (.xlsx), CSV (.csv), JSON (.json)</p>
+            </div>
+          </div>
+          <input type="file" id="import-file" accept=".json" class="hidden" onchange="handleImport(event)"/>
+          <input type="file" id="upload-savings-file" accept=".xlsx,.xls,.csv,.json" class="hidden" onchange="handleUploadSavings(event)"/>
+        </div>
+        
+        <!-- BACKUP & DATA PROTECTION -->
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <h2 class="font-semibold text-navy mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-shield-halved text-gold"></i> Backup & Bảo Vệ Dữ Liệu
+          </h2>
+          <div id="backup-status-container" class="space-y-3">
+            <!-- Sẽ được tạo động bởi showBackupStatus() -->
+          </div>
+          <div class="space-y-3 mt-4">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 class="font-medium text-sm text-blue-900 mb-2">
+                <i class="fa-solid fa-info-circle"></i> Hệ Thống Bảo Vệ Dữ Liệu
+              </h3>
+              <ul class="text-xs text-blue-800 space-y-1 ml-4 list-disc">
+                <li><strong>Auto-backup:</strong> Tự động tạo backup sau mỗi 5 lần thay đổi</li>
+                <li><strong>Lưu giữ:</strong> Tối đa 5 phiên bản backup gần nhất trong trình duyệt</li>
+                <li><strong>Khôi phục tự động:</strong> Tự động khôi phục nếu phát hiện dữ liệu bị lỗi</li>
+                <li><strong>Nhắc nhở:</strong> Nhắc xuất file backup sau mỗi 7 ngày</li>
+              </ul>
+            </div>
+            <div id="backup-list" class="space-y-2">
+              <!-- Danh sách backup sẽ được tạo động -->
+            </div>
+            <button onclick="refreshBackupStatus()" class="btn-outline px-4 py-2 text-sm rounded-lg font-medium w-full">
+              <i class="fa-solid fa-sync mr-1"></i> Làm Mới Trạng Thái Backup
+            </button>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <h2 class="font-semibold text-navy mb-4">Thông Tin Ứng Dụng</h2>
+          <div class="text-sm text-gray-600 space-y-1">
+            <div>Phiên bản: <strong>1.0.0 - CEP Edition</strong></div>
+            <div>Dữ liệu lưu tại: <strong>localStorage của trình duyệt</strong></div>
+            <div>Mặc định: <strong>CEP - Tổ chức Tài chính Vi mô</strong></div>
+            <div>Hoàn toàn riêng tư – không gửi dữ liệu lên server</div>
+          </div>
+          <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div class="text-xs text-green-800" id="cep-rate-info">
+              <!-- filled by JS -->
+            </div>
+          </div>
+          <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="text-xs text-blue-800">
+              <strong>💡 Lưu ý:</strong> Lãi suất có thể thay đổi theo chính sách CEP.
+              Vui lòng kiểm tra tại CEP để có thông tin mới nhất.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL: ADD/EDIT SAVINGS -->
+<div id="modal-savings" class="modal-overlay hidden">
+  <div class="modal-box bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4">
+    <div class="flex items-center justify-between p-5 border-b">
+      <h3 id="modal-savings-title" class="font-bold text-lg text-navy">Thêm Sổ Tiết Kiệm</h3>
+      <button onclick="closeModal('modal-savings')" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+      <input type="hidden" id="form-savings-id"/>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <label class="label">Tên / Ghi Chú *</label>
+          <input id="form-name" type="text" class="input-field w-full" placeholder="VD: Sổ TK Vietcombank tháng 6"/>
+        </div>
+        <div class="col-span-2">
+          <label class="label">Ngân Hàng *</label>
+          <select id="form-bank" class="input-field w-full" onchange="updateRateFromBank()">
+            <option value="">-- Chọn ngân hàng --</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">Số Tiền Gốc (₫) *</label>
+          <input id="form-principal" type="text" inputmode="numeric" class="input-field w-full" placeholder="100.000.000" oninput="formatMoneyInput(this)"/>
+        </div>
+        <div>
+          <label class="label">Lãi Suất (%/năm) *</label>
+          <input id="form-rate" type="number" step="0.01" class="input-field w-full" placeholder="7.0"/>
+          <p class="text-xs text-gray-500 mt-1">Tự động điền khi chọn ngân hàng & kỳ hạn</p>
+        </div>
+        <div>
+          <label class="label">Ngày Gửi *</label>
+          <input id="form-start-date" type="date" class="input-field w-full"/>
+        </div>
+        <div>
+          <label class="label">Kỳ Hạn *</label>
+          <select id="form-term" class="input-field w-full" onchange="updateRateFromBank()">
+            <option value="1">1 tháng</option>
+            <option value="2">2 tháng</option>
+            <option value="3">3 tháng</option>
+            <option value="6">6 tháng</option>
+            <option value="9">9 tháng</option>
+            <option value="12" selected>12 tháng</option>
+            <option value="18">18 tháng</option>
+            <option value="24">24 tháng</option>
+            <option value="36">36 tháng</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">Hình Thức Lãi</label>
+          <select id="form-interest-type" class="input-field w-full">
+            <option value="maturity">Cuối kỳ (Đáo hạn)</option>
+            <option value="monthly">Hàng tháng</option>
+            <option value="upfront">Đầu kỳ</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">Lãi Suất Không KH (%/năm)</label>
+          <input id="form-demand-rate" type="number" step="0.01" class="input-field w-full" placeholder="0.5" value="0.5"/>
+        </div>
+        <div class="col-span-2">
+          <label class="label">Số Tài Khoản / Số Sổ (tùy chọn)</label>
+          <input id="form-account-no" type="text" class="input-field w-full" placeholder="1234567890"/>
+        </div>
+        <div class="col-span-2">
+          <label class="label">Ghi Chú Thêm</label>
+          <textarea id="form-notes" class="input-field w-full h-20 resize-none" placeholder="Ghi chú..."></textarea>
+        </div>
+        <div class="col-span-2">
+          <label class="label">Trạng Thái</label>
+          <select id="form-status" class="input-field w-full">
+            <option value="active">Đang gửi</option>
+            <option value="matured">Đã đáo hạn</option>
+            <option value="withdrawn">Đã rút</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="p-5 border-t flex gap-3">
+      <button onclick="saveSavingsForm()" class="flex-1 btn-gold py-2.5 rounded-xl font-semibold">Lưu</button>
+      <button onclick="closeModal('modal-savings')" class="flex-1 btn-outline py-2.5 rounded-xl font-semibold">Hủy</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SAVINGS DETAIL -->
+<div id="modal-detail" class="modal-overlay hidden">
+  <div class="modal-box bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4">
+    <div class="flex items-center justify-between p-5 border-b">
+      <h3 id="modal-detail-title" class="font-bold text-lg text-navy">Chi Tiết Sổ Tiết Kiệm</h3>
+      <button onclick="closeModal('modal-detail')" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="modal-detail-content" class="p-5 max-h-[75vh] overflow-y-auto"></div>
+    <div class="p-5 border-t flex gap-3">
+      <button id="detail-edit-btn" class="flex-1 btn-navy py-2.5 rounded-xl font-semibold">Chỉnh Sửa</button>
+      <button id="detail-delete-btn" class="flex-1 text-red-600 border border-red-200 py-2.5 rounded-xl font-semibold hover:bg-red-50">Xóa</button>
+      <button onclick="closeModal('modal-detail')" class="flex-1 btn-outline py-2.5 rounded-xl font-semibold">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NOTIFICATIONS -->
+<div id="modal-notif" class="modal-overlay hidden">
+  <div class="modal-box bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
+    <div class="flex items-center justify-between p-5 border-b">
+      <h3 class="font-bold text-lg text-navy">Thông Báo & Cảnh Báo</h3>
+      <button onclick="closeModal('modal-notif')" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="notif-content" class="p-5 max-h-[70vh] overflow-y-auto space-y-3"></div>
+  </div>
+</div>
+
+<!-- MODAL: EDIT RATES -->
+<div id="modal-rates" class="modal-overlay hidden">
+  <div class="modal-box bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4">
+    <div class="flex items-center justify-between p-5 border-b">
+      <h3 class="font-bold text-lg text-navy">Cập Nhật Lãi Suất Ngân Hàng</h3>
+      <button onclick="closeModal('modal-rates')" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="p-5 max-h-[75vh] overflow-y-auto">
+      <div class="text-sm text-gray-500 mb-4">Cập nhật lãi suất theo tháng. Đơn vị: %/năm</div>
+      <div id="edit-rates-form" class="overflow-x-auto"></div>
+    </div>
+    <div class="p-5 border-t flex gap-3">
+      <button onclick="saveEditedRates()" class="flex-1 btn-gold py-2.5 rounded-xl font-semibold">Lưu Lãi Suất</button>
+      <button onclick="closeModal('modal-rates')" class="flex-1 btn-outline py-2.5 rounded-xl font-semibold">Hủy</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: PREVIEW UPLOAD -->
+<div id="modal-preview" class="modal-overlay hidden">
+  <div class="modal-box bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4">
+    <div class="flex items-center justify-between p-5 border-b">
+      <h3 class="font-bold text-lg text-navy">Xem Trước Dữ Liệu Import</h3>
+      <button onclick="closeModal('modal-preview')" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="p-5 max-h-[70vh] overflow-y-auto">
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex items-start gap-3">
+        <i class="fa-solid fa-info-circle text-blue-600 mt-0.5"></i>
+        <div class="text-sm text-blue-800">
+          <strong id="preview-count"></strong> sổ tiết kiệm sẽ được import. Kiểm tra dữ liệu trước khi xác nhận.
+        </div>
+      </div>
+      <div class="mb-4 flex gap-3">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="import-mode" value="add" checked class="w-4 h-4"/>
+          <span class="text-sm font-medium">Thêm vào danh sách hiện có</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="import-mode" value="replace" class="w-4 h-4"/>
+          <span class="text-sm font-medium">Thay thế toàn bộ (xóa dữ liệu cũ)</span>
+        </label>
+      </div>
+      <div id="preview-content" class="overflow-x-auto"></div>
+    </div>
+    <div class="p-5 border-t flex gap-3">
+      <button onclick="confirmImportSavings()" class="flex-1 btn-gold py-2.5 rounded-xl font-semibold">
+        <i class="fa-solid fa-check mr-1"></i> Xác Nhận Import
+      </button>
+      <button onclick="closeModal('modal-preview')" class="flex-1 btn-outline py-2.5 rounded-xl font-semibold">Hủy</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast hidden fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg text-white text-sm font-medium flex items-center gap-2">
+  <i id="toast-icon" class="fa-solid fa-circle-check"></i>
+  <span id="toast-msg"></span>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
