@@ -1,0 +1,9 @@
+node_modules
+.git
+.vscode
+.idea
+*.log
+.DS_Store
+Thumbs.db
+## Chat Customization Diagnostics.txt
+README_BACKUP.md

@@ -1419,8 +1419,8 @@ async function autoUpdateRates() {
   const statusDiv = document.getElementById('update-status');
   const btn = document.getElementById('auto-update-btn');
   
-  // Kiểm tra xem server có đang chạy không
-  const API_URL = 'http://localhost:3000/api/rates/refresh';
+  // Auto-detect API URL (works both locally and on deployed servers)
+  const API_URL = `${window.location.origin}/api/rates/refresh`;
   
   try {
     // Hiển thị trạng thái đang cập nhật
