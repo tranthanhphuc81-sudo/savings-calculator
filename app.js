@@ -37,6 +37,20 @@ const DEFAULT_BANK_RATES = {
   'OCB': { 0: 0.20, 1: 3.5, 2: 3.7, 3: 4.1, 6: 5.4, 9: 5.6, 12: 5.9, 18: 6.1, 24: 6.3, 36: 6.4 }
 };
 
+// ===== BANKS WITH AUTO-UPDATE SUPPORT =====
+// Các ngân hàng có parser function hoàn chỉnh
+const AUTO_UPDATE_BANKS = [
+  'Vietcombank',
+  'VietinBank',
+  'BIDV',
+  'Agribank',
+  'MB Bank',
+  'Techcombank',
+  'ACB',
+  'VPBank',
+  'TPBank'
+];
+
 // ===== SIDEBAR TOGGLE (MOBILE) =====
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
@@ -1283,11 +1297,26 @@ function renderRatesTable() {
     bestRates[t] = Math.max(...banks.map(b => bankRates[b][t] || 0));
   });
   
-  tbody.innerHTML = banks.map(bank => {
+  // Separate banks into auto-update and manual groups
+  const autoUpdateBanks = banks.filter(b => AUTO_UPDATE_BANKS.includes(b));
+  const manualBanks = banks.filter(b => !AUTO_UPDATE_BANKS.includes(b));
+  const sortedBanks = [...autoUpdateBanks, ...manualBanks];
+  
+  tbody.innerHTML = sortedBanks.map(bank => {
     const rates = bankRates[bank];
+    const hasAutoUpdate = AUTO_UPDATE_BANKS.includes(bank);
+    const badge = hasAutoUpdate 
+      ? '<span class="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full" title="Hỗ trợ cập nhật tự động">🔄 Auto</span>'
+      : '<span class="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full" title="Chỉ nhập thủ công">📝 Manual</span>';
+    
     return `
-      <tr>
-        <td class="p-3 font-semibold text-navy">${bank}</td>
+      <tr class="${hasAutoUpdate ? 'bg-green-50/30' : ''}">
+        <td class="p-3 font-semibold text-navy">
+          <div class="flex items-center">
+            <span>${bank}</span>
+            ${badge}
+          </div>
+        </td>
         ${terms.map(t => {
           const rate = rates[t] || 0;
           const isBest = rate === bestRates[t] && rate > 0;
@@ -1385,6 +1414,90 @@ function saveEditedRates() {
   showToast('Đã cập nhật lãi suất thành công', 'success');
 }
 
+// ===== AUTO UPDATE RATES FROM API =====
+async function autoUpdateRates() {
+  const statusDiv = document.getElementById('update-status');
+  const btn = document.getElementById('auto-update-btn');
+  
+  // Kiểm tra xem server có đang chạy không
+  const API_URL = 'http://localhost:3000/api/rates/refresh';
+  
+  try {
+    // Hiển thị trạng thái đang cập nhật
+    statusDiv.classList.remove('hidden');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i><span class="hidden sm:inline">Đang cập nhật...</span><span class="sm:hidden">...</span>';
+    
+    // Gọi API để lấy lãi suất mới
+    const response = await fetch(API_URL, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('API server không phản hồi. Vui lòng khởi động server trước.');
+    }
+    
+    const result = await response.json();
+    
+    if (result.success && result.data) {
+      // Cập nhật bankRates với dữ liệu mới
+      bankRates = { ...bankRates, ...result.data };
+      
+      // Lưu vào localStorage
+      saveToStorage();
+      
+      // Render lại bảng
+      renderRatesTable();
+      
+      // Hiển thị thông báo thành công
+      const updatedCount = Object.keys(result.data).length;
+      showToast(`✓ Đã cập nhật lãi suất từ ${updatedCount} ngân hàng!`, 'success');
+      
+      // Cập nhật thời gian cập nhật cuối
+      const now = new Date().toLocaleString('vi-VN');
+      statusDiv.innerHTML = `
+        <i class="fa-solid fa-check-circle text-green-600"></i>
+        <span class="text-sm text-green-700">Cập nhật thành công lúc ${now}</span>
+      `;
+      statusDiv.className = 'mb-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2';
+      
+      // Ẩn thông báo sau 5 giây
+      setTimeout(() => {
+        statusDiv.classList.add('hidden');
+      }, 5000);
+    } else {
+      throw new Error(result.message || 'Không thể cập nhật lãi suất');
+    }
+    
+  } catch (error) {
+    console.error('Auto update error:', error);
+    
+    // Hiển thị lỗi
+    statusDiv.innerHTML = `
+      <i class="fa-solid fa-exclamation-triangle text-red-600"></i>
+      <span class="text-sm text-red-700">${error.message}</span>
+      <button onclick="this.parentElement.classList.add('hidden')" class="ml-auto text-red-600 hover:text-red-800">
+        <i class="fa-solid fa-times"></i>
+      </button>
+    `;
+    statusDiv.className = 'mb-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2';
+    
+    // Hướng dẫn khởi động server
+    if (error.message.includes('server')) {
+      showToast('⚠️ Vui lòng khởi động server bằng lệnh: npm start', 'warning', 8000);
+    } else {
+      showToast('✗ Lỗi: ' + error.message, 'error');
+    }
+  } finally {
+    // Khôi phục nút
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-sync mr-1"></i><span class="hidden sm:inline">Cập Nhật Tự Động</span><span class="sm:hidden">Auto</span>';
+  }
+}
+
 // ===== SAVINGS FORM =====
 function openAddSavings() {
   currentEditingId = null;
@@ -1447,6 +1560,30 @@ function saveSavingsForm() {
   if (!name || !bank || !principal || !rate || !startDate) {
     showToast('Vui lòng điền đầy đủ thông tin bắt buộc (*)', 'error');
     return;
+  }
+  
+  // Kiểm tra trùng số sổ
+  if (accountNo) {
+    const duplicateExists = savings.some(s => {
+      // Nếu đang sửa, bỏ qua sổ đang sửa
+      if (currentEditingId && s.id === currentEditingId) {
+        return false;
+      }
+      // Kiểm tra số sổ có trùng không (không phân biệt hoa thường)
+      return s.accountNo && s.accountNo.toLowerCase() === accountNo.toLowerCase();
+    });
+    
+    if (duplicateExists) {
+      showToast(`Số sổ "${accountNo}" đã tồn tại! Vui lòng nhập số sổ khác.`, 'error');
+      // Highlight input field
+      const accountInput = document.getElementById('form-account-no');
+      accountInput.classList.add('border-red-500', 'bg-red-50');
+      accountInput.focus();
+      setTimeout(() => {
+        accountInput.classList.remove('border-red-500', 'bg-red-50');
+      }, 3000);
+      return;
+    }
   }
   
   const maturityDate = dayjs(startDate).add(term, 'month').format('YYYY-MM-DD');
@@ -2028,14 +2165,32 @@ function validateImportData(data) {
       interestType: row.interestType || 'maturity',
       startDate: parseDate(row.startDate) || dayjs().format('YYYY-MM-DD'),
       demandRate: parseFloat(row.demandRate) || 0.5,
-      accountNo: row.accountNo || '',
+      accountNo: String(row.accountNo || '').trim(),
       notes: row.notes || '',
       status: row.status || 'active',
-      createdAt: dayjs().format('YYYY-MM-DD HH:mm:ss')
+      createdAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      isDuplicate: false // Flag để đánh dấu trùng số sổ
     };
     
     // Calculate maturity date
     saving.maturityDate = dayjs(saving.startDate).add(saving.term, 'month').format('YYYY-MM-DD');
+    
+    // Kiểm tra trùng số sổ với dữ liệu hiện tại
+    if (saving.accountNo) {
+      const existsInCurrent = savings.some(s => 
+        s.accountNo && s.accountNo.toLowerCase() === saving.accountNo.toLowerCase()
+      );
+      
+      // Kiểm tra trùng trong chính file import
+      const existsInImport = validated.some(s => 
+        s.accountNo && s.accountNo.toLowerCase() === saving.accountNo.toLowerCase()
+      );
+      
+      if (existsInCurrent || existsInImport) {
+        saving.isDuplicate = true;
+        saving.duplicateReason = existsInCurrent ? 'Trùng với dữ liệu hiện có' : 'Trùng trong file import';
+      }
+    }
     
     if (saving.principal > 0 && saving.rate > 0) {
       validated.push(saving);
@@ -2074,9 +2229,23 @@ function parseDate(dateStr) {
 
 function showPreviewModal(data) {
   const preview = document.getElementById('preview-content');
+  const duplicateCount = data.filter(s => s.isDuplicate).length;
+  const validCount = data.length - duplicateCount;
+  
   document.getElementById('preview-count').textContent = `${data.length}`;
   
   const html = `
+    ${duplicateCount > 0 ? `
+    <div class="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded-lg text-sm">
+      <div class="flex items-start gap-2">
+        <i class="fa-solid fa-triangle-exclamation text-yellow-600 mt-0.5"></i>
+        <div>
+          <div class="font-semibold text-yellow-800 mb-1">Phát hiện ${duplicateCount} sổ bị trùng số!</div>
+          <div class="text-yellow-700">Các sổ bị trùng (màu đỏ) sẽ bị bỏ qua khi import. Chỉ ${validCount} sổ hợp lệ sẽ được thêm vào.</div>
+        </div>
+      </div>
+    </div>
+    ` : ''}
     <table class="w-full text-xs border-collapse">
       <thead>
         <tr class="bg-gray-100">
@@ -2089,20 +2258,27 @@ function showPreviewModal(data) {
           <th class="p-2 text-center border">Kỳ Hạn</th>
           <th class="p-2 text-center border">Ngày Gửi</th>
           <th class="p-2 text-center border">Đáo Hạn</th>
+          <th class="p-2 text-center border">Trạng Thái</th>
         </tr>
       </thead>
       <tbody>
         ${data.map((s, idx) => `
-          <tr class="${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
-            <td class="p-2 border">${idx + 1}</td>
-            <td class="p-2 border font-medium">${s.name}</td>
-            <td class="p-2 border">${s.bank}</td>
-            <td class="p-2 border text-gray-600">${s.accountNo || '—'}</td>
-            <td class="p-2 border text-right font-semibold text-navy">${formatCurrency(s.principal, true)}</td>
-            <td class="p-2 border text-center text-green-600 font-semibold">${s.rate}%</td>
-            <td class="p-2 border text-center">${s.term}T</td>
-            <td class="p-2 border text-center">${dayjs(s.startDate).format('DD/MM/YYYY')}</td>
-            <td class="p-2 border text-center">${dayjs(s.maturityDate).format('DD/MM/YYYY')}</td>
+          <tr class="${s.isDuplicate ? 'bg-red-50' : (idx % 2 === 0 ? 'bg-white' : 'bg-gray-50')}">
+            <td class="p-2 border ${s.isDuplicate ? 'text-red-600' : ''}">${idx + 1}</td>
+            <td class="p-2 border font-medium ${s.isDuplicate ? 'text-red-600' : ''}">${s.name}</td>
+            <td class="p-2 border ${s.isDuplicate ? 'text-red-600' : ''}">${s.bank}</td>
+            <td class="p-2 border ${s.isDuplicate ? 'text-red-600 font-semibold' : 'text-gray-600'}">
+              ${s.accountNo || '—'}
+              ${s.isDuplicate ? '<i class="fa-solid fa-triangle-exclamation ml-1 text-red-500" title="' + s.duplicateReason + '"></i>' : ''}
+            </td>
+            <td class="p-2 border text-right font-semibold ${s.isDuplicate ? 'text-red-600' : 'text-navy'}">${formatCurrency(s.principal, true)}</td>
+            <td class="p-2 border text-center ${s.isDuplicate ? 'text-red-600' : 'text-green-600'} font-semibold">${s.rate}%</td>
+            <td class="p-2 border text-center ${s.isDuplicate ? 'text-red-600' : ''}">${s.term}T</td>
+            <td class="p-2 border text-center ${s.isDuplicate ? 'text-red-600' : ''}">${dayjs(s.startDate).format('DD/MM/YYYY')}</td>
+            <td class="p-2 border text-center ${s.isDuplicate ? 'text-red-600' : ''}">${dayjs(s.maturityDate).format('DD/MM/YYYY')}</td>
+            <td class="p-2 border text-center text-xs">
+              ${s.isDuplicate ? '<span class="text-red-600 font-semibold">✗ Bỏ qua</span>' : '<span class="text-green-600 font-semibold">✓ OK</span>'}
+            </td>
           </tr>
         `).join('')}
       </tbody>
@@ -2123,15 +2299,28 @@ function confirmImportSavings() {
     savings = [];
   }
   
-  // Add imported savings
-  previewData.forEach(s => {
-    savings.push(s);
+  // Lọc và chỉ thêm các sổ không bị trùng
+  const validSavings = previewData.filter(s => !s.isDuplicate);
+  const skippedCount = previewData.length - validSavings.length;
+  
+  // Add imported savings (remove isDuplicate and duplicateReason fields)
+  validSavings.forEach(s => {
+    const { isDuplicate, duplicateReason, ...cleanSaving } = s;
+    savings.push(cleanSaving);
   });
   
   saveToStorage();
   renderAll();
   closeModal('modal-preview');
-  showToast(`Đã import ${previewData.length} sổ tiết kiệm thành công`, 'success');
+  
+  if (skippedCount > 0) {
+    showToast(
+      `Đã import ${validSavings.length} sổ tiết kiệm. Bỏ qua ${skippedCount} sổ bị trùng số.`, 
+      'warning'
+    );
+  } else {
+    showToast(`Đã import ${validSavings.length} sổ tiết kiệm thành công`, 'success');
+  }
   
   previewData = [];
 }

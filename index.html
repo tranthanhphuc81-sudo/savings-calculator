@@ -403,12 +403,35 @@
           </h2>
           <div class="flex gap-2">
             <input id="rate-search" type="text" placeholder="Tìm ngân hàng..." class="input-field flex-1 min-w-[130px] sm:w-48" oninput="renderRatesTable()"/>
+            <button id="auto-update-btn" onclick="autoUpdateRates()" class="shrink-0 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 text-sm rounded-lg font-medium transition-colors">
+              <i class="fa-solid fa-sync mr-1"></i><span class="hidden sm:inline">Cập Nhật Tự Động</span><span class="sm:hidden">Auto</span>
+            </button>
             <button onclick="openEditRates()" class="shrink-0 btn-navy px-3 sm:px-4 py-2 text-sm rounded-lg font-medium">
-              <i class="fa-solid fa-pen mr-1"></i><span class="hidden sm:inline">Cập Nhật Lãi Suất</span><span class="sm:hidden">Cập nhật</span>
+              <i class="fa-solid fa-pen mr-1"></i><span class="hidden sm:inline">Sửa Thủ Công</span><span class="sm:hidden">Sửa</span>
             </button>
           </div>
         </div>
+        
+        <!-- Legend Info -->
+        <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div class="flex flex-wrap items-center gap-3 text-sm text-gray-700">
+            <span class="font-medium text-navy"><i class="fa-solid fa-info-circle mr-1"></i>Chú thích:</span>
+            <span class="flex items-center gap-1">
+              <span class="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">🔄 Auto</span>
+              <span class="text-gray-600">= Hỗ trợ cập nhật tự động (9 ngân hàng)</span>
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">📝 Manual</span>
+              <span class="text-gray-600">= Chỉ nhập thủ công (6 ngân hàng)</span>
+            </span>
+          </div>
+        </div>
+        
         <div class="overflow-x-auto">
+          <div id="update-status" class="hidden mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+            <i class="fa-solid fa-spinner fa-spin text-blue-600"></i>
+            <span class="text-sm text-blue-700">Đang cập nhật lãi suất từ các ngân hàng...</span>
+          </div>
           <table class="w-full text-sm" id="rates-table">
             <thead>
               <tr class="bg-gray-50">
@@ -428,7 +451,10 @@
             <tbody id="rates-tbody"></tbody>
           </table>
         </div>
-        <p class="text-xs text-gray-400 mt-3">* Lãi suất mang tính tham khảo, cập nhật thủ công. Kiểm tra trực tiếp tại ngân hàng trước khi gửi.</p>
+        <p class="text-xs text-gray-400 mt-3">
+          * Lãi suất có thể cập nhật tự động từ website ngân hàng hoặc chỉnh sửa thủ công. 
+          <span class="text-blue-600">Bấm "Cập Nhật Tự Động"</span> để lấy lãi suất mới nhất từ các ngân hàng.
+        </p>
       </div>
 
       <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
